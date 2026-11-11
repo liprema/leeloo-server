@@ -3,10 +3,11 @@ title: Leeloo Robot Server
 emoji: 🏄‍♀️
 colorFrom: yellow
 colorTo: blue
-sdk: docker
-app_port: 7860
+sdk: gradio
+sdk_version: 4.44.0
+app_file: app.py
 pinned: false
 ---
 
-# Leeloo AI English Tutor Robot Server
+# 🏄‍♀️ Leeloo Robot Server
 Open-source Xiaozhi WebSocket server for Lili robot companion powered by Gemini 3.8 Flash and Edge-TTS.

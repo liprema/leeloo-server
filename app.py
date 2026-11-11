@@ -6,17 +6,20 @@ import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 import edge_tts
+import gradio as gr
 
 app = FastAPI(title="Leeloo AI Tutor Server")
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 if not GEMINI_API_KEY:
-    # Try reading from .env file if present
-    from dotenv import load_dotenv
-    load_dotenv()
-    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={GEMINI_API_KEY}"
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+    except Exception:
+        pass
 
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={GEMINI_API_KEY}"
 VOICE = "en-US-AvaNeural"
 
 LEELOO_SYSTEM_PROMPT = """You are Leeloo (Лилу), a sunny, cheerful, and super friendly surfer girl.
@@ -41,14 +44,12 @@ Your Personality & Rules:
 6. Pass the Mic: Always end your response with an easy, engaging question to keep Polina talking.
 """
 
-# In-memory conversation history
 chat_history = []
 
 async def ask_gemini(user_text: str) -> str:
     global chat_history
     chat_history.append({"role": "user", "parts": [{"text": user_text}]})
     
-    # Keep last 10 messages for context
     if len(chat_history) > 10:
         chat_history = chat_history[-10:]
         
@@ -79,17 +80,12 @@ async def ask_gemini(user_text: str) -> str:
         return "Whoa, my Wi-Fi surfboard wobbled! Tell me that one more time?"
 
 async def generate_speech_audio(text: str) -> bytes:
-    # Uses edge-tts to generate mp3 audio bytes
     communicate = edge_tts.Communicate(text, VOICE)
     audio_data = b""
     async for chunk in communicate.stream():
         if chunk["type"] == "audio":
             audio_data += chunk["data"]
     return audio_data
-
-@app.get("/")
-def index():
-    return HTMLResponse("<h1>🏄‍♀️ Leeloo Robot Server is Running!</h1><p>Ready to surf English waves with Polina.</p>")
 
 @app.websocket("/xiaozhi/v1/")
 @app.websocket("/xiaozhi/v1")
@@ -100,7 +96,6 @@ async def websocket_endpoint(websocket: WebSocket):
     print(f"[*] Robot connected! Session ID: {session_id}")
     
     try:
-        # Step 1: Send Xiaozhi hello response
         hello_response = {
             "type": "hello",
             "version": 1,
@@ -122,32 +117,19 @@ async def websocket_endpoint(websocket: WebSocket):
                 data = json.loads(msg["text"])
                 msg_type = data.get("type")
                 
-                # Wake word or client hello
                 if msg_type == "hello":
-                    print("[*] Received client hello")
                     continue
-                    
-                # Speech-to-text received from robot or client
                 elif msg_type == "stt":
                     user_text = data.get("text", "")
-                    print(f"[User said]: {user_text}")
                     if not user_text:
                         continue
                         
-                    # 1. Set emotion to thinking
                     await websocket.send_text(json.dumps({"type": "llm", "emotion": "thinking"}))
-                    
-                    # 2. Get answer from Gemini
                     reply = await ask_gemini(user_text)
-                    print(f"[Leeloo reply]: {reply}")
-                    
-                    # 3. Set emotion to happy
                     await websocket.send_text(json.dumps({"type": "llm", "emotion": "happy"}))
                     
-                    # 4. Generate audio via Edge-TTS
                     audio_bytes = await generate_speech_audio(reply)
                     
-                    # 5. Send TTS start events
                     await websocket.send_text(json.dumps({
                         "type": "tts",
                         "state": "start",
@@ -160,25 +142,43 @@ async def websocket_endpoint(websocket: WebSocket):
                         "session_id": session_id
                     }))
                     
-                    # 6. Stream audio chunks in 1KB blocks
                     chunk_size = 1024
                     for i in range(0, len(audio_bytes), chunk_size):
                         chunk = audio_bytes[i:i + chunk_size]
                         await websocket.send_bytes(chunk)
                         await asyncio.sleep(0.01)
                         
-                    # 7. Send TTS stop event
                     await websocket.send_text(json.dumps({
                         "type": "tts",
                         "state": "stop",
                         "session_id": session_id
                     }))
-                    
             elif "bytes" in msg:
-                # Audio stream from robot's microphone
                 pass
                 
     except WebSocketDisconnect:
         print(f"[*] Robot disconnected: {session_id}")
     except Exception as e:
-        print(f"[*] Error in WebSocket handler: {e}")
+        print(f"[*] Error: {e}")
+
+# Gradio Dashboard UI
+with gr.Blocks(title="Leeloo AI Robot Dashboard") as demo:
+    gr.Markdown("# 🏄‍♀️ Leeloo Robot Server")
+    gr.Markdown("**Status:** 🟢 Online & Ready to surf English waves!")
+    gr.Markdown("Endpoint for Lili Robot: `wss://<this-url>/xiaozhi/v1/`")
+    
+    with gr.Row():
+        test_input = gr.Textbox(label="Test a message to Leeloo in browser", placeholder="Hello Leeloo! How are you?")
+        test_btn = gr.Button("Send to Leeloo", variant="primary")
+    test_output = gr.Textbox(label="Leeloo's Reply", interactive=False)
+    
+    async def test_chat(text):
+        return await ask_gemini(text)
+        
+    test_btn.click(fn=test_chat, inputs=test_input, outputs=test_output)
+
+app = gr.mount_gradio_app(app, demo, path="/")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=7860)
