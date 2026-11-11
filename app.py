@@ -153,8 +153,28 @@ async def websocket_endpoint(websocket: WebSocket):
                         "state": "stop",
                         "session_id": session_id
                     }))
-            elif "bytes" in msg:
-                pass
+@app.post("/xiaozhi/ota/")
+@app.post("/xiaozhi/ota")
+async def ota_endpoint():
+    print("[*] Robot requested OTA config! Redirecting to local Leeloo WebSocket...")
+    return {
+        "server_time": {"timestamp": 1794436242484, "timeZone": "Europe/Moscow", "timezone_offset": 180},
+        "firmware": {"version": "2.5.9"},
+        "websocket": {"url": "ws://192.168.0.101:8000/xiaozhi/v1/"},
+        "mqtt": {"url": "192.168.0.101:1883"},
+        "isBound": True
+    }
+
+@app.post("/device_init/provision")
+@app.post("/device_init/provision/")
+async def provision_endpoint():
+    print("[*] Robot requested Provision! Redirecting to local Leeloo WebSocket...")
+    return {
+        "websocketUrl": "ws://192.168.0.101:8000/xiaozhi/v1/",
+        "mqttUrl": "192.168.0.101:1883",
+        "otaUrl": "http://192.168.0.101:8000/xiaozhi/ota/",
+        "status": "success"
+    }
                 
     except WebSocketDisconnect:
         print(f"[*] Robot disconnected: {session_id}")
