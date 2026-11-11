@@ -8,17 +8,26 @@ echo    🏄‍♀️ LEELOO AI ENGLISH TUTOR - WINDOWS SERVER 🏄‍♀️
 echo ========================================================
 echo.
 
-echo [1/3] Checking Python via py launcher...
-py --version >nul 2>&1
+set "PYCMD=python"
+python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Python not found!
-    pause
-    exit /b 1
+    py --version >nul 2>&1
+    if %errorlevel% equ 0 (
+        set "PYCMD=py"
+    ) else (
+        echo [ERROR] Python is not installed or not in PATH!
+        echo Please download and install Python from https://www.python.org/
+        echo (Make sure to check "Add Python to PATH" during installation!)
+        pause
+        exit /b 1
+    )
 )
 
-echo [Python OK!]
+echo [1/3] Found Python (%PYCMD%)!
+echo.
+
 echo [2/3] Installing/updating requirements...
-py -m pip install -r requirements.txt
+%PYCMD% -m pip install -r requirements.txt
 
 echo.
 echo [3/3] Starting Leeloo Server on port 8000...
@@ -30,5 +39,5 @@ echo Leave this window open while chatting with your robot!
 echo ========================================================
 echo.
 
-py app.py
+%PYCMD% app.py
 pause
