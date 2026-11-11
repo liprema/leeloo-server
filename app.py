@@ -153,6 +153,11 @@ async def websocket_endpoint(websocket: WebSocket):
                         "state": "stop",
                         "session_id": session_id
                     }))
+    except WebSocketDisconnect:
+        print(f"[*] Robot disconnected: {session_id}")
+    except Exception as e:
+        print(f"[*] Error in WebSocket handler: {e}")
+
 @app.post("/xiaozhi/ota/")
 @app.post("/xiaozhi/ota")
 async def ota_endpoint():
@@ -175,11 +180,6 @@ async def provision_endpoint():
         "otaUrl": "http://192.168.0.101:8000/xiaozhi/ota/",
         "status": "success"
     }
-                
-    except WebSocketDisconnect:
-        print(f"[*] Robot disconnected: {session_id}")
-    except Exception as e:
-        print(f"[*] Error: {e}")
 
 # Gradio Dashboard UI
 with gr.Blocks(title="Leeloo AI Robot Dashboard") as demo:
