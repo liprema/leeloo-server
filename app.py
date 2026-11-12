@@ -170,16 +170,29 @@ async def ota_endpoint():
         "isBound": True
     }
 
+@app.post("/xiaozhi/device_init/provision")
+@app.post("/xiaozhi/device_init/provision/")
 @app.post("/device_init/provision")
 @app.post("/device_init/provision/")
 async def provision_endpoint():
     print("[*] Robot requested Provision! Redirecting to local Leeloo WebSocket...")
     return {
+        "did": "94:a9:90:1b:78:c4",
+        "clientId": "a4bef5ef-651c-4669-b242-fbd30a12090d",
         "websocketUrl": "ws://192.168.0.101:8000/xiaozhi/v1/",
         "mqttUrl": "192.168.0.101:1883",
         "otaUrl": "http://192.168.0.101:8000/xiaozhi/ota/",
-        "status": "success"
+        "status": "success",
+        "registered": True,
+        "bound": True,
+        "active": True,
+        "online": True
     }
+
+@app.post("/xiaozhi/tracing/spans")
+@app.post("/tracing/spans")
+async def tracing_spans():
+    return {"status": "ok"}
 
 # Gradio Dashboard UI
 with gr.Blocks(title="Leeloo AI Robot Dashboard") as demo:
