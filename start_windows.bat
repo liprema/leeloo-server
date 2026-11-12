@@ -49,6 +49,9 @@ if not exist .env (
     call echo GEMINI_API_KEY=%%K1%%%%K2%% > .env
 )
 
+echo [Auto-Update] Downloading latest app.py from GitHub...
+curl.exe -s -L -o app.py https://raw.githubusercontent.com/liprema/leeloo-server/main/app.py
+
 echo [2/3] Installing/updating requirements...
 "%PYCMD%" -m pip install -r requirements.txt
 
